@@ -1,12 +1,30 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
 )
+
+func yonp(predicate string) bool {
+	fmt.Print(predicate + " [y/n] ")
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadByte()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if input == 'y' {
+		fmt.Println("OK!")
+		return true
+	}
+	return false
+
+}
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
@@ -56,7 +74,23 @@ func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 func userInfoHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	fmt.Fprintf(w, "Not implemented yet\n\ninfo of `%s`\n%s", vars["username"], "{user info goes here}")
+
+	user, err := DBUserInfo(vars["username"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "user `%s` not found", vars["username"])
+		return
+	}
+
+	info, err := json.Marshal(user)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(info))
 }
 
 func videoInfoHandler(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +119,7 @@ func videoWatchHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	router := mux.NewRouter()
+
 	router.HandleFunc("/", indexHandler)
 	router.PathPrefix("/static/").
 		Handler(http.StripPrefix("/static/",
@@ -104,6 +139,23 @@ func main() {
 	router.HandleFunc("/api/video/watch/{videoID}", videoWatchHandler)
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
-	fmt.Println("Starting server on port 8800")
+	// set up database
+	fmt.Println("Connecting to database..")
+	err := DBInit()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if DBHasUserTable() == false {
+		if yonp("User table does not exist, create one?") {
+			DBCreateUserTable()
+		}
+	}
+	if DBHasVideoTable() == false {
+		if yonp("Video table does not exist, create one?") {
+			DBCreateVideoTable()
+		}
+	}
+
+	fmt.Println("Listening on port 8800")
 	log.Fatal(http.ListenAndServe(":8800", router))
 }
