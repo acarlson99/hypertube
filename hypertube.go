@@ -13,7 +13,7 @@ import (
 )
 
 func yonp(predicate string) bool {
-	fmt.Print(predicate + " [y/n] ")
+	fmt.Print(predicate + " [y/N]: ")
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadByte()
 	if err != nil {
@@ -39,11 +39,6 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 func userUsageHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 	fmt.Fprintln(w, "Routes: /create/, /login/, /logout/, /update/, /delete/, /info/")
-}
-
-func usernameHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(w, `{"username":"beanboy","bio":"I'm a very beany boy!"}`)
 }
 
 func userCreateHandler(w http.ResponseWriter, r *http.Request) {
@@ -141,12 +136,10 @@ func videoWatchHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	router := mux.NewRouter()
-
 	router.HandleFunc("/", indexHandler)
 	router.PathPrefix("/static/").
 		Handler(http.StripPrefix("/static/",
 			http.FileServer(http.Dir("./static/"))))
-
 	router.HandleFunc("/api/user/", userUsageHandler)
 	router.HandleFunc("/api/user/create/", userCreateHandler)
 	router.HandleFunc("/api/user/login/{username}", userLoginHandler)
@@ -154,14 +147,12 @@ func main() {
 	router.HandleFunc("/api/user/update/{username}", userUpdateHandler)
 	router.HandleFunc("/api/user/delete/{username}", userDeleteHandler)
 	router.HandleFunc("/api/user/info/{username}", userInfoHandler)
-
 	router.HandleFunc("/api/video/info/{videoID}", videoInfoHandler)
 	router.HandleFunc("/api/video/delete/{videoID}", videoDeleteHandler)
 	router.HandleFunc("/api/video/update/{videoID}", videoUpdateHandler)
 	router.HandleFunc("/api/video/watch/{videoID}", videoWatchHandler)
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
-	// set up database
 	fmt.Println("Connecting to database..")
 	err := DBInit()
 	if err != nil {
@@ -171,6 +162,9 @@ func main() {
 		if yonp("User table does not exist, create one?") {
 			DBCreateUserTable()
 		}
+		if yonp("Add four test users?") {
+			DBGenerateTrash()
+		}
 	}
 	if DBHasVideoTable() == false {
 		if yonp("Video table does not exist, create one?") {
@@ -178,6 +172,6 @@ func main() {
 		}
 	}
 
-	fmt.Println("Listening on port 8800")
+	fmt.Println("Listening on port :8800")
 	log.Fatal(http.ListenAndServe(":8800", router))
 }
