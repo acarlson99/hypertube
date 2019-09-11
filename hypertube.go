@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -23,7 +24,6 @@ func yonp(predicate string) bool {
 		return true
 	}
 	return false
-
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -36,8 +36,7 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "\"%s\" not found. OH NO.", r.URL)
 }
 
-// User handlers
-func userHandler(w http.ResponseWriter, r *http.Request) {
+func userUsageHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusBadRequest)
 	fmt.Fprintln(w, "Routes: /create/, /login/, /logout/, /update/, /delete/, /info/")
 }
@@ -48,8 +47,25 @@ func usernameHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	fmt.Fprintf(w, "Not implemented yet\n\nCreate `%s` with body: %s", vars["username"], r.Body)
+	var user UserData
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	err = DBUserCreate(user)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, err.Error())
+		return
+	}
 }
 
 func userLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -68,8 +84,14 @@ func userUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	fmt.Fprintf(w, "Not implemented yet\n\nDeleting `%s`", vars["username"])
+	username := mux.Vars(r)["username"]
+	err := DBUserDelete(username)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	return
 }
 
 func userInfoHandler(w http.ResponseWriter, r *http.Request) {
@@ -125,8 +147,8 @@ func main() {
 		Handler(http.StripPrefix("/static/",
 			http.FileServer(http.Dir("./static/"))))
 
-	router.HandleFunc("/api/user/", userHandler)
-	router.HandleFunc("/api/user/create/{username}", userCreateHandler)
+	router.HandleFunc("/api/user/", userUsageHandler)
+	router.HandleFunc("/api/user/create/", userCreateHandler)
 	router.HandleFunc("/api/user/login/{username}", userLoginHandler)
 	router.HandleFunc("/api/user/logout/{username}", userLogoutHandler)
 	router.HandleFunc("/api/user/update/{username}", userUpdateHandler)
