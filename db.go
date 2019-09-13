@@ -107,13 +107,50 @@ func DBHasVideoTable() bool {
 
 // DBCreateVideoTable creates a video table in the database
 func DBCreateVideoTable() error {
-	_, err := database.Exec(`CREATE TABLE videos (uuid uuid unique, link datalink,
-		title text, description text, length numeric, likes numeric, dislikes numeric);
+	_, err := database.Exec(`CREATE TABLE videos (uuid uuid unique, link text,
+		title text, description text, length text, likes numeric, dislikes numeric);
 		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+// DBVideoCreate adds a video to the database
+func DBVideoCreate(video VideoData) error {
+	command := `INSERT INTO videos (uuid, link, title, description, length, likes, dislikes)
+		VALUES (uuid_generate_v1(), $1, $2, $3, $4, $5, $6);`
+	_, err := database.Exec(command, video.Link, video.Title,
+		video.Description, video.Length, video.Likes, video.Dislikes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DBVideoDelete deletes a video from the database
+func DBVideoDelete(UUID string) error {
+	command := `DELETE FROM videos WHERE uuid = $1`
+	_, err := database.Exec(command, UUID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DBVideoInfo returns a Video's info
+func DBVideoInfo(UUID string) (VideoData, error) {
+	var done VideoData
+	rows, err := database.Query("SELECT * FROM videos WHERE uuid = $1", UUID)
+	if err != nil {
+		return done, err
+	}
+	rows.Next()
+	err = rows.Scan(&done.UUID, done.Link, done.Title, done.Description, done.Length, done.Likes, done.Dislikes)
+	if err != nil {
+		return done, err
+	}
+	return done, nil
 }
 
 // DBGenerateTrash generates `random` users to test api calls on

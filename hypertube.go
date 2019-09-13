@@ -112,14 +112,56 @@ func userInfoHandler(w http.ResponseWriter, r *http.Request) {
 
 func videoInfoHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	fmt.Fprintln(w, `Not implemented yet`)
-	fmt.Fprintf(w, `{"%s": "bullshit"}`, vars["videoID"])
+
+	video, err := DBVideoInfo(vars["uuid"])
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, "video `%s` not found", vars["uuid"])
+		return
+	}
+
+	info, err := json.Marshal(video)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, string(info))
+}
+
+func videoCreateHandler(w http.ResponseWriter, r *http.Request) {
+	var video VideoData
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	err = json.Unmarshal(body, &video)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	err = DBVideoCreate(video)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, err.Error())
+		return
+	}
 }
 
 func videoDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	fmt.Fprintln(w, `Not implemented yet`)
-	fmt.Fprintf(w, "`%s` deleted", vars["videoID"])
+	UUID := mux.Vars(r)["uuid"]
+	err := DBVideoDelete(UUID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	return
 }
 
 func videoUpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -147,10 +189,11 @@ func main() {
 	router.HandleFunc("/api/user/update/{username}", userUpdateHandler)
 	router.HandleFunc("/api/user/delete/{username}", userDeleteHandler)
 	router.HandleFunc("/api/user/info/{username}", userInfoHandler)
-	router.HandleFunc("/api/video/info/{videoID}", videoInfoHandler)
-	router.HandleFunc("/api/video/delete/{videoID}", videoDeleteHandler)
-	router.HandleFunc("/api/video/update/{videoID}", videoUpdateHandler)
-	router.HandleFunc("/api/video/watch/{videoID}", videoWatchHandler)
+	router.HandleFunc("/api/video/info/{uuid}", videoInfoHandler)
+	router.HandleFunc("/api/video/create/", videoCreateHandler)
+	router.HandleFunc("/api/video/delete/{uuid}", videoDeleteHandler)
+	router.HandleFunc("/api/video/update/{uuid}", videoUpdateHandler)
+	router.HandleFunc("/api/video/watch/{uuid}", videoWatchHandler)
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
 	fmt.Println("Connecting to database..")
