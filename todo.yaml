@@ -1,0 +1,7 @@
+front-end:
+  - everything
+back-end:
+  - authenticate users
+  - download torrent from magnet link
+  - convert video to mkv
+  - add video search api
