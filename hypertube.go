@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -164,15 +163,8 @@ func videoUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func videoDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	magnet := make([]byte, 1024)
-	_, err := r.Body.Read(magnet)
-	if err != nil && err != io.EOF {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, err)
-		return
-	}
-
-	err = TCDownload(string(magnet))
+	magnet := mux.Vars(r)["magnet"]
+	err := TCDownload(string(magnet))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprint(w, err)
@@ -216,7 +208,7 @@ func createRoutes(router *mux.Router) {
 	router.HandleFunc("/api/video/info/{uuid}", videoInfoHandler)
 	router.HandleFunc("/api/video/create/", videoCreateHandler)
 	router.HandleFunc("/api/video/delete/{uuid}", videoDeleteHandler)
-	router.HandleFunc("/api/video/download/", videoDownloadHandler)
+	router.HandleFunc("/api/video/download/{magnet}", videoDownloadHandler)
 	//router.HandleFunc("/api/video/watch/local/{uuid}", videoWatchLocalHandler)
 	router.HandleFunc("/ws/video/watch/", videoWatchHandlerTest)
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
