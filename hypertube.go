@@ -76,7 +76,7 @@ func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	err := DBUserDelete(username)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 	return
@@ -95,7 +95,7 @@ func userInfoHandler(w http.ResponseWriter, r *http.Request) {
 	info, err := json.Marshal(user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 
@@ -116,7 +116,7 @@ func videoInfoHandler(w http.ResponseWriter, r *http.Request) {
 	info, err := json.Marshal(video)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 
@@ -129,19 +129,19 @@ func videoCreateHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 	err = json.Unmarshal(body, &video)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 	err = DBVideoCreate(video)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 }
@@ -151,7 +151,7 @@ func videoDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	err := DBVideoDelete(UUID)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 	return
@@ -168,14 +168,14 @@ func videoDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := r.Body.Read(magnet)
 	if err != nil && err != io.EOF {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 
 	err = TCDownload(string(magnet))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 }
@@ -183,7 +183,7 @@ func videoDownloadHandler(w http.ResponseWriter, r *http.Request) {
 func videoWatchHandlerTest(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open("static/lemon-demon.mp4")
 	if err != nil {
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
 
