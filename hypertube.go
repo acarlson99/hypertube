@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -16,20 +17,6 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-}
-
-func yonp(predicate string) bool {
-	fmt.Print(predicate + " [y/N]: ")
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadByte()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if input == 'y' {
-		fmt.Println("OK!")
-		return true
-	}
-	return false
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +163,24 @@ func videoUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "`%s` updated with body `%s`", vars["videoID"], r.Body)
 }
 
-func videoWatchHandler(w http.ResponseWriter, r *http.Request) {
+func videoDownloadHandler(w http.ResponseWriter, r *http.Request) {
+	magnet := make([]byte, 1024)
+	_, err := r.Body.Read(magnet)
+	if err != nil && err != io.EOF {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	err = TCDownload(string(magnet))
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+}
+
+func videoWatchHandlerTest(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open("static/lemon-demon.mp4")
 	if err != nil {
 		fmt.Fprint(w, err.Error())
@@ -199,12 +203,9 @@ func videoWatchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
-	router := mux.NewRouter()
+func createRoutes(router *mux.Router) {
 	router.HandleFunc("/", indexHandler)
-	router.PathPrefix("/static/").
-		Handler(http.StripPrefix("/static/",
-			http.FileServer(http.Dir("./static/"))))
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("./static/"))))
 	router.HandleFunc("/api/user/", userUsageHandler)
 	router.HandleFunc("/api/user/create/", userCreateHandler)
 	router.HandleFunc("/api/user/login/{username}", userLoginHandler)
@@ -215,29 +216,21 @@ func main() {
 	router.HandleFunc("/api/video/info/{uuid}", videoInfoHandler)
 	router.HandleFunc("/api/video/create/", videoCreateHandler)
 	router.HandleFunc("/api/video/delete/{uuid}", videoDeleteHandler)
-	router.HandleFunc("/api/video/update/{uuid}", videoUpdateHandler)
-	router.HandleFunc("/ws/video/watch/", videoWatchHandler)
+	router.HandleFunc("/api/video/download/", videoDownloadHandler)
+	//router.HandleFunc("/api/video/watch/local/{uuid}", videoWatchLocalHandler)
+	router.HandleFunc("/ws/video/watch/", videoWatchHandlerTest)
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
+}
 
-	fmt.Println("Connecting to database..")
-	err := DBInit()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if DBHasUserTable() == false {
-		if yonp("User table does not exist, create one?") {
-			DBCreateUserTable()
-		}
-		if yonp("Add four test users?") {
-			DBGenerateTrash()
-		}
-	}
-	if DBHasVideoTable() == false {
-		if yonp("Video table does not exist, create one?") {
-			DBCreateVideoTable()
-		}
-	}
+func main() {
+	router := mux.NewRouter()
+	createRoutes(router)
 
-	fmt.Println("Listening on port :8800")
+	DBInit()
+	DBGenerateTablesPrompt()
+
+	TCStart()
+
+	log.Print("Listening on port :8800")
 	log.Fatal(http.ListenAndServe(":8800", router))
 }

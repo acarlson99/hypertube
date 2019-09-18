@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 )
@@ -28,19 +31,48 @@ type VideoData struct {
 }
 
 // DBInit logs in to the database
-func DBInit() error {
-	fmt.Println("Loading database..")
+func DBInit() {
+	log.Print("Loading database..")
 	connStr := "user=postgres password=postgres dbname=postgres sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 	err = db.Ping()
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 	database = db
-	return nil
+}
+
+// DBGenerateTablesPrompt asks the user to generate tables if they don't already exist
+func DBGenerateTablesPrompt() {
+	yonp := func(predicate string) bool {
+		fmt.Print(predicate + " [y/N]: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadByte()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if input == 'y' {
+			fmt.Println("OK!")
+			return true
+		}
+		return false
+	}
+	if DBHasUserTable() == false {
+		if yonp("User table does not exist, create one?") {
+			DBCreateUserTable()
+		}
+		if yonp("Add four test users?") {
+			DBGenerateTrash()
+		}
+	}
+	if DBHasVideoTable() == false {
+		if yonp("Video table does not exist, create one?") {
+			DBCreateVideoTable()
+		}
+	}
 }
 
 // DBHasUserTable returns true if the database is loaded and contains a user table
