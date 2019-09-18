@@ -10,7 +10,13 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
 
 func yonp(predicate string) bool {
 	fmt.Print(predicate + " [y/N]: ")
@@ -171,9 +177,26 @@ func videoUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func videoWatchHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	fmt.Fprintln(w, `Not implemented yet`)
-	fmt.Fprintf(w, "watching `%s`", vars["videoID"])
+	file, err := os.Open("static/lemon-demon.mp4")
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	reader := bufio.NewReader(file)
+	data := make([]byte, 64)
+	conn, _ := upgrader.Upgrade(w, r, nil)
+	for {
+		n, err := reader.Read(data)
+		if n == 0 || err != nil {
+			return
+		}
+
+		err = conn.WriteMessage(websocket.BinaryMessage, data)
+		if err != nil {
+			return
+		}
+	}
 }
 
 func main() {
@@ -193,7 +216,7 @@ func main() {
 	router.HandleFunc("/api/video/create/", videoCreateHandler)
 	router.HandleFunc("/api/video/delete/{uuid}", videoDeleteHandler)
 	router.HandleFunc("/api/video/update/{uuid}", videoUpdateHandler)
-	router.HandleFunc("/api/video/watch/{uuid}", videoWatchHandler)
+	router.HandleFunc("/ws/video/watch/", videoWatchHandler)
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 
 	fmt.Println("Connecting to database..")
