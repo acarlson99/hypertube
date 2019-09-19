@@ -46,13 +46,12 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = DBUserCreate(user)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, err.Error())
+		goto handleErr
 	}
 	return
 
 handleErr:
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(http.StatusBadRequest)
 	fmt.Fprint(w, err)
 }
 
@@ -134,14 +133,12 @@ func videoCreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = DBVideoCreate(video)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, err)
-		return
+		goto handleErr
 	}
 	return
 
 handleErr:
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(http.StatusBadRequest)
 	fmt.Fprint(w, err)
 }
 
@@ -167,7 +164,7 @@ func videoDownloadHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(w, err)
 	}
-	_, err = TCAdd("magnet:?xt=urn:btih:"+string(hash), index)
+	_, err = TClientAdd("magnet:?xt=urn:btih:"+string(hash), index)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprint(w, err)
@@ -223,7 +220,7 @@ func main() {
 	DBInit()
 	DBGenerateTablesPrompt()
 
-	TCStart()
+	TClientStart()
 
 	log.Print("Listening on port :8800")
 	log.Fatal(http.ListenAndServe(":8800", router))

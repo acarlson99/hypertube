@@ -14,8 +14,8 @@ var client *torrent.Client
 // openTorrents is a map containing readers to each torrent being downloaded
 var openTorrents = make(map[string]io.Reader)
 
-// TCStart starts a torrent client and sets videos as the download dir
-func TCStart() {
+// TClientStart starts a torrent client and sets videos as the download dir
+func TClientStart() {
 	var err error
 
 	log.Print("Starting torrent client")
@@ -29,10 +29,10 @@ func TCStart() {
 	}
 }
 
-// TCAdd adds the magnet to the torrent client.
+// TClientAdd adds the magnet to the torrent client.
 // returns an error if the magnet is invalid or if torrent.Info times out
 // or if the magnet is already loaded into the client
-func TCAdd(magnet string, index int) (*torrent.Torrent, error) {
+func TClientAdd(magnet string, index int) (*torrent.Torrent, error) {
 	const timeout = 10 * time.Second
 	torrent, err := client.AddMagnet(magnet)
 	if err != nil {
