@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -37,22 +38,22 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
 	var user UserData
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
-		return
+		goto handleErr
 	}
 	err = json.Unmarshal(body, &user)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
-		return
+		goto handleErr
 	}
 	err = DBUserCreate(user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(w, err.Error())
-		return
 	}
+	return
+
+handleErr:
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprint(w, err)
 }
 
 func userLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -76,9 +77,7 @@ func userDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, err)
-		return
 	}
-	return
 }
 
 func userInfoHandler(w http.ResponseWriter, r *http.Request) {
@@ -127,15 +126,11 @@ func videoCreateHandler(w http.ResponseWriter, r *http.Request) {
 	var video VideoData
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err)
-		return
+		goto handleErr
 	}
 	err = json.Unmarshal(body, &video)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err)
-		return
+		goto handleErr
 	}
 	err = DBVideoCreate(video)
 	if err != nil {
@@ -143,6 +138,11 @@ func videoCreateHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err)
 		return
 	}
+	return
+
+handleErr:
+	w.WriteHeader(http.StatusInternalServerError)
+	fmt.Fprint(w, err)
 }
 
 func videoDeleteHandler(w http.ResponseWriter, r *http.Request) {
@@ -151,9 +151,7 @@ func videoDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprint(w, err)
-		return
 	}
-	return
 }
 
 func videoUpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -163,12 +161,16 @@ func videoUpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func videoDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	magnet := mux.Vars(r)["magnet"]
-	err := TCDownload(string(magnet))
+	hash := mux.Vars(r)["hash"]
+	index, err := strconv.Atoi(mux.Vars(r)["index"])
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, err)
+	}
+	_, err = TCAdd("magnet:?xt=urn:btih:"+string(hash), index)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		fmt.Fprint(w, err)
-		return
 	}
 }
 
@@ -208,7 +210,7 @@ func createRoutes(router *mux.Router) {
 	router.HandleFunc("/api/video/info/{uuid}", videoInfoHandler)
 	router.HandleFunc("/api/video/create/", videoCreateHandler)
 	router.HandleFunc("/api/video/delete/{uuid}", videoDeleteHandler)
-	router.HandleFunc("/api/video/download/{magnet}", videoDownloadHandler)
+	router.HandleFunc("/api/video/download/{hash}/{index}", videoDownloadHandler)
 	//router.HandleFunc("/api/video/watch/local/{uuid}", videoWatchLocalHandler)
 	router.HandleFunc("/ws/video/watch/", videoWatchHandlerTest)
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)

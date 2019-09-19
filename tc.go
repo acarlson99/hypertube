@@ -1,12 +1,18 @@
 package main
 
 import (
+	"errors"
+	"io"
 	"log"
+	"time"
 
 	"github.com/anacrolix/torrent"
 )
 
 var client *torrent.Client
+
+// openTorrents is a map containing readers to each torrent being downloaded
+var openTorrents = make(map[string]io.Reader)
 
 // TCStart starts a torrent client and sets videos as the download dir
 func TCStart() {
@@ -23,22 +29,29 @@ func TCStart() {
 	}
 }
 
-// TCDownload downloads the video from a torrent file
-func TCDownload(magnet string) error {
+// TCAdd adds the magnet to the torrent client.
+// returns an error if the magnet is invalid or if torrent.Info times out
+// or if the magnet is already loaded into the client
+func TCAdd(magnet string, index int) (*torrent.Torrent, error) {
+	const timeout = 10 * time.Second
 	torrent, err := client.AddMagnet(magnet)
 	if err != nil {
-		return err
+		return torrent, err
 	}
-	<-torrent.GotInfo() // do this so things don't whine
 
-	files := torrent.Files()
-	if len(files) == 1 { // torrent is a single file so we download it all
-		torrent.DownloadAll()
-	} else { // figure out which file is the video file
-		for file := range files {
-			println(file)
+	// if torrent info hasn't arrived by timeout return errors
+	select {
+	case <-time.After(timeout):
+		torrent.Drop()
+		return torrent, errors.New("torrent.GotInfo: timeout for torrent " + magnet)
+	case <-torrent.GotInfo():
+		torrentHash := torrent.InfoHash().AsString()
+		torrentFile := torrent.Files()[index]
+		if openTorrents[torrentHash] != nil {
+			return torrent, errors.New("Torrent already loaded")
 		}
+		openTorrents[torrentHash] = torrentFile.NewReader()
 	}
-	client.WaitAll()
-	return nil
+
+	return torrent, nil
 }
