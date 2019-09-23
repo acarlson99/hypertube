@@ -6,37 +6,72 @@
 
 <body>
 	<script src="//vjs.zencdn.net/7.3.0/video.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js">	</script>
 	<link href="//vjs.zencdn.net/7.3.0/video-js.min.css" rel="stylesheet">
+	<video controls width="320" height="240" id="v"></video>
 	<script>
-		var ws = new WebSocket("ws://localhost:8800/ws/video/watch/");
-		window.URL = window.URL || window.webkitURL;
-		window.MediaSource = window.MediaSource || window.WebKitMediaSource;
+	var socket = new WebSocket("ws://localhost:8800/ws/video/watch/");
 
-		if (!!!window.MediaSource) {
-			alert('MediaSource API is not available!');
-			return;
-		}
+	window.URL = window.URL || window.webkitURL;
+	window.MediaSource = window.MediaSource || window.WebKitMediaSource;
 
-		var mediaSource = new MediaSource();
-		var video = document.getElementById('v');
+	if (!!!window.MediaSource) {
+		alert('MediaSource API is not available!');
+	}
 
-		video.src = window.URL.createObjectURL(mediaSource);
+	var mediaSource = new MediaSource();
+	var video = document.getElementById('v');
+	video.src = window.URL.createObjectURL(mediaSource);
+	window.URL = window.URL || window.webkitURL;
+	window.MediaSource = window.MediaSource || window.WebKitMediaSource;
 
-		mediaSource.addEventListener('webkitsourceopen', function (e) {
-			var sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs="vorbis,vp8"');
-			var socket = io.connect('http://localhost:8080');
+	if (!!!window.MediaSource) {
+		alert('MediaSource API is not available!');
+	}
 
-			if (socket)
-				console.log('Library retrieved!');
+	var mediaSource = new MediaSource();
+	var video = document.getElementById('v');
 
-			socket.emit('VIDEO_STREAM_REQ', 'REQUEST');
-
-			socket.on('VS', function (data) {
-				console.log(data);
-				sourceBuffer.append(data);
-			});
+	video.src = window.URL.createObjectURL(mediaSource);
+	mediaSource.addEventListener('sourceopen', function (e) {
+		var sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs="vorbis,vp8"');
+		console.log(socket)
+		if (socket)
+			console.log('Socket created');
+		let i = 0
+		let j = 0
+		let dataArray = []
+		socket.onmessage = function (e) {
+			const blb = new Blob([e.data], {type: "video/webm"})
+			console.log(blb)
+			dataArray.push(blb)
+			if (j < 1 && !sourceBuffer.updating) {
+				console.log("calling from onmessage")
+				initialRead()
+			}
+			j++
+		};
+		sourceBuffer.addEventListener('updateend', function(e){
+			console.log("update ended")
+			if (dataArray.length != 0 && !sourceBuffer.updating) {
+				console.log("calling from listener")
+				initialRead()
+			}
 		});
 
+		function initialRead() {
+			var initialReader = new FileReader()
+			initialReader.onload = function(e) {
+				console.log("appending happening")
+				sourceBuffer.appendBuffer(new Uint8Array(e.target.result))
+				console.log("append happened")
+				dataArray.shift()
+			}
+
+			initialReader.readAsArrayBuffer(dataArray[0])
+		}			
+		
+	});
 	</script>
 
 </body>
