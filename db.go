@@ -62,15 +62,24 @@ func DBGenerateTablesPrompt() {
 	}
 	if DBHasUserTable() == false {
 		if yonp("User table does not exist, create one?") {
-			DBCreateUserTable()
+			err := DBCreateUserTable()
+			if err != nil {
+				panic(err) // TODO: address error
+			}
 		}
 		if yonp("Add four test users?") {
-			DBGenerateTrash()
+			err := DBGenerateTrash(4)
+			if err != nil {
+				panic(err) // TODO: address error
+			}
 		}
 	}
 	if DBHasVideoTable() == false {
 		if yonp("Video table does not exist, create one?") {
-			DBCreateVideoTable()
+			err := DBCreateVideoTable()
+			if err != nil {
+				panic(err) // TODO: address error
+			}
 		}
 	}
 }
@@ -86,7 +95,11 @@ func DBHasUserTable() bool {
 
 // DBCreateUserTable creates a user table in the database
 func DBCreateUserTable() error {
-	_, err := database.Exec("CREATE TABLE users (username text unique, bio text, email text);")
+	_, err := database.Exec(`CREATE TABLE users (
+								username text unique primary key,
+								bio text,
+								email text not null
+							);`)
 	if err != nil {
 		return err
 	}
@@ -178,7 +191,8 @@ func DBVideoInfo(UUID string) (VideoData, error) {
 		return done, err
 	}
 	rows.Next()
-	err = rows.Scan(&done.UUID, done.Link, done.Title, done.Description, done.Length, done.Likes, done.Dislikes)
+	err = rows.Scan(&done.UUID, done.Link, done.Title, done.Description,
+		done.Length, done.Likes, done.Dislikes)
 	if err != nil {
 		return done, err
 	}
@@ -186,10 +200,14 @@ func DBVideoInfo(UUID string) (VideoData, error) {
 }
 
 // DBGenerateTrash generates `random` users to test api calls on
-func DBGenerateTrash() {
-	command := `INSERT INTO users (username, bio, email) VALUES ('test1', 'test bio 1', 'test@1.1');
-		INSERT INTO users (username, bio, email) VALUES ('test2', 'test bio 2', 'test@2.2');
-		INSERT INTO users (username, bio, email) VALUES ('test3', 'test bio 3', 'test@3.3');
-		INSERT INTO users (username, bio, email) VALUES ('test4', 'test bio 4', 'test@4.4');`
-	database.Exec(command)
+func DBGenerateTrash(numUsrs int) error {
+	for ii := 0; ii < numUsrs; ii++ {
+		usr := UserData{fmt.Sprintf("test%d", ii),
+			fmt.Sprintf("test bio %d", ii), fmt.Sprintf("test@%d.%d", ii, ii)}
+		err := DBUserCreate(usr)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

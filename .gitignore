@@ -1,2 +1,5 @@
 videos/
 .torrent.bolt.db
+/hypertube
+._*
+go.sum
