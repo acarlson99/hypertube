@@ -217,7 +217,7 @@ func main() {
 	router := mux.NewRouter()
 	createRoutes(router)
 
-	DBInit()
+	DBInit("postgres")
 	DBGenerateTablesPrompt()
 
 	TClientStart()

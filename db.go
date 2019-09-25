@@ -30,10 +30,10 @@ type VideoData struct {
 	Dislikes    uint
 }
 
-// DBInit logs in to the database
-func DBInit() {
+// DBInit logs in to database `dbname`
+func DBInit(dbname string) {
 	log.Print("Loading database..")
-	connStr := "user=postgres password=postgres dbname=postgres sslmode=disable"
+	connStr := "user=postgres password=postgres dbname=" + dbname + " sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		log.Fatal(err)
@@ -64,13 +64,13 @@ func DBGenerateTablesPrompt() {
 		if yonp("User table does not exist, create one?") {
 			err := DBCreateUserTable()
 			if err != nil {
-				panic(err) // TODO: address error
+				log.Println("Unable to create user table:", err)
 			}
 		}
 		if yonp("Add four test users?") {
 			err := DBGenerateTrash(4)
 			if err != nil {
-				panic(err) // TODO: address error
+				log.Println("Unable to create test users:", err)
 			}
 		}
 	}
@@ -78,7 +78,7 @@ func DBGenerateTablesPrompt() {
 		if yonp("Video table does not exist, create one?") {
 			err := DBCreateVideoTable()
 			if err != nil {
-				panic(err) // TODO: address error
+				log.Println("Unable to create video table:", err)
 			}
 		}
 	}
