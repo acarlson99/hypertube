@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -172,15 +174,26 @@ func videoDownloadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func videoWatchHandlerTest(w http.ResponseWriter, r *http.Request) {
-	file, err := os.Open("static/lemon-demon.mp4")
+	// file, err := os.Open("static/lemon-demon.mp4")
+	file, err := os.Open("./static/bunny.webm")
 	if err != nil {
 		fmt.Fprint(w, err)
 		return
 	}
 
+	stat, err := file.Stat()
+	if err != nil {
+		fmt.Fprint(w, err)
+	}
+	fmt.Println(stat.Size())
+
 	reader := bufio.NewReader(file)
-	data := make([]byte, 64)
-	conn, _ := upgrader.Upgrade(w, r, nil)
+	data := make([]byte, stat.Size())
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Fprint(w, err)
+		return
+	}
 	for {
 		n, err := reader.Read(data)
 		if n == 0 || err != nil {
@@ -192,6 +205,25 @@ func videoWatchHandlerTest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func videoWatchHandlerHash(w http.ResponseWriter, r *http.Request) {
+	hash := mux.Vars(r)["hash"]
+
+	reader, ok := openTorrents[hash]
+	if !ok {
+		fmt.Fprint(w, "Video not found")
+		return
+	}
+	var buf bytes.Buffer
+	io.TeeReader(reader, &buf)
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		fmt.Fprint(w, err)
+		return
+	}
+	err = conn.WriteMessage(websocket.BinaryMessage, buf.Bytes())
 }
 
 func createRoutes(router *mux.Router) {
@@ -210,6 +242,7 @@ func createRoutes(router *mux.Router) {
 	router.HandleFunc("/api/video/download/{hash}/{index}", videoDownloadHandler)
 	//router.HandleFunc("/api/video/watch/local/{uuid}", videoWatchLocalHandler)
 	router.HandleFunc("/ws/video/watch/", videoWatchHandlerTest)
+	router.HandleFunc("/ws/video/watch/{hash}", videoWatchHandlerHash)
 	router.NotFoundHandler = http.HandlerFunc(notFoundHandler)
 }
 

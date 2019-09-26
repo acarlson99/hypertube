@@ -16,14 +16,14 @@ Set up and run database
 
 ```
 export PGDATA=/tmp/postgres/
-initdb /tmp/postgres
+initdb $PGDATA
 postgres
 ```
 
 Create hypertube user
 
 ```
-createdb -O username
+createdb -O `whoami`
 psql
 create user postgres with superuser;
 ```
