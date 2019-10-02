@@ -178,7 +178,6 @@ func videoDownloadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func videoWatchHandlerTest(w http.ResponseWriter, r *http.Request) {
-	// file, err := os.Open("static/lemon-demon.mp4")
 	file, err := os.Open("./static/bunny.webm")
 	if err != nil {
 		fmt.Fprint(w, err)
@@ -192,19 +191,16 @@ func videoWatchHandlerTest(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(stat.Size())
 
 	reader := bufio.NewReader(file)
-	data := make([]byte, stat.Size())
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Fprint(w, err)
 		return
 	}
-	for {
-		n, err := reader.Read(data)
-		if n == 0 || err != nil {
-			return
-		}
 
-		err = conn.WriteMessage(websocket.BinaryMessage, data)
+	bytes, _ := ioutil.ReadAll(reader)
+	chunks := splitBytes(bytes, WSWriteSize)
+	for _, chunk := range chunks {
+		err = conn.WriteMessage(websocket.BinaryMessage, chunk)
 		if err != nil {
 			return
 		}
@@ -224,6 +220,8 @@ func splitBytes(buf []byte, size int) [][]byte {
 	return chunks
 }
 
+// NOTE: this is horribly broken.  TeeReader does not fill buf with info
+// need way to read from reader without modifying reader
 func videoWatchHandlerHash(w http.ResponseWriter, r *http.Request) {
 	hash := mux.Vars(r)["hash"]
 
