@@ -16,6 +16,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	WSWriteSize = 1024
+)
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -207,6 +211,19 @@ func videoWatchHandlerTest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func splitBytes(buf []byte, size int) [][]byte {
+	chunks := [][]byte{}
+	for len(buf) >= size {
+		var chunk []byte
+		chunk, buf = buf[:size], buf[size:]
+		chunks = append(chunks, chunk)
+	}
+	if len(buf) > 0 {
+		chunks = append(chunks, buf[:len(buf)])
+	}
+	return chunks
+}
+
 func videoWatchHandlerHash(w http.ResponseWriter, r *http.Request) {
 	hash := mux.Vars(r)["hash"]
 
@@ -223,7 +240,13 @@ func videoWatchHandlerHash(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err)
 		return
 	}
-	err = conn.WriteMessage(websocket.BinaryMessage, buf.Bytes())
+	chunks := splitBytes(buf.Bytes(), WSWriteSize)
+	for _, chunk := range chunks {
+		err = conn.WriteMessage(websocket.BinaryMessage, chunk)
+		if err != nil {
+			return
+		}
+	}
 }
 
 func createRoutes(router *mux.Router) {
