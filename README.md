@@ -27,3 +27,12 @@ createdb -O `whoami`
 psql
 create user postgres with superuser;
 ```
+
+Run hypertube server
+
+```
+export hypertube_clientID_github=<ID>
+export hypertube_clientSecret_github=<Secret>
+go build
+./hypertube
+```

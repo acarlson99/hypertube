@@ -62,10 +62,7 @@ handleErr:
 }
 
 type tokenJSON struct {
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int32  `json:"expires_in"`
+	AccessToken string `json:"access_token"`
 }
 
 // request should look something like:
@@ -85,7 +82,7 @@ func oauthRedirectGithubHandler(w http.ResponseWriter, r *http.Request) {
 
 	httpClient := http.Client{}
 	res, err := httpClient.Do(req)
-	if err != nil {
+	if err != nil || res.StatusCode != 200 {
 		panic(err) // TODO: address error
 	}
 	defer res.Body.Close()
@@ -98,7 +95,12 @@ func oauthRedirectGithubHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusFound)
 	io.WriteString(w, t.AccessToken)
-	// TODO: do something with AccessToken
+
+	// TODO: make full user
+	err = DBUserCreate(UserData{"", "", "", t.AccessToken})
+	if err != nil {
+		panic(err) // TODO: address error
+	}
 }
 
 func userLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -319,8 +321,14 @@ func main() {
 	router := mux.NewRouter()
 	createRoutes(router)
 
-	clientID_github = os.Getenv("clientID_github")
-	clientSecret_github = os.Getenv("clientSecret_github")
+	clientID_github = os.Getenv("hypertube_clientID_github")
+	if len(clientID_github) < 1 {
+		log.Println("hypertube_clientID_github empty.  Set environment variable")
+	}
+	clientSecret_github = os.Getenv("hypertube_clientSecret_github")
+	if len(clientSecret_github) < 1 {
+		log.Println("hypertube_clientSecret_github empty.  Set environment variable")
+	}
 
 	DBInit("postgres")
 	DBGenerateTablesPrompt()

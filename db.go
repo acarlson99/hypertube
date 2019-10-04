@@ -17,6 +17,7 @@ type UserData struct {
 	Name  string
 	Bio   string
 	Email string
+	Token string
 }
 
 // VideoData contains metadata about the video and a link to the video file
@@ -98,7 +99,8 @@ func DBCreateUserTable() error {
 	_, err := database.Exec(`CREATE TABLE users (
 								username text unique primary key,
 								bio text,
-								email text not null
+								email text not null,
+								token text
 							);`)
 	if err != nil {
 		return err
@@ -108,8 +110,8 @@ func DBCreateUserTable() error {
 
 // DBUserCreate adds a user into the database
 func DBUserCreate(user UserData) error {
-	command := `INSERT INTO users (username, bio, email) VALUES ($1, $2, $3);`
-	_, err := database.Exec(command, user.Name, user.Bio, user.Email)
+	command := `INSERT INTO users (username, bio, email, token) VALUES ($1, $2, $3, $4);`
+	_, err := database.Exec(command, user.Name, user.Bio, user.Email, user.Token)
 	if err != nil {
 		return err
 	}
@@ -203,7 +205,8 @@ func DBVideoInfo(UUID string) (VideoData, error) {
 func DBGenerateTrash(numUsrs int) error {
 	for ii := 0; ii < numUsrs; ii++ {
 		usr := UserData{fmt.Sprintf("test%d", ii),
-			fmt.Sprintf("test bio %d", ii), fmt.Sprintf("test@%d.%d", ii, ii)}
+			fmt.Sprintf("test bio %d", ii), fmt.Sprintf("test@%d.%d", ii, ii),
+			""}
 		err := DBUserCreate(usr)
 		if err != nil {
 			return err
